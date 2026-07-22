@@ -85,6 +85,26 @@ def test_소관미상이어도_강태그면_핵심이다():
     assert "반도체" in v.tags
 
 
+def test_소관이_넓은_부처는_태그없이_핵심으로_잡히지_않는다():
+    # motie·mcee·mss는 소관이 넓어 과기정책이 일부일 뿐이다. 예산소진성
+    # 실측에서 이 셋을 science_tech_core에 뒀더니 태그 없이 core로 잡힌
+    # 안건이 각각 74%·80%·97%였고, 내용은 무역·환경규제·소상공인지원이라
+    # 과기정책이 아니었다. 반드시 주제 태그가 있어야 잡혀야 한다.
+    assert classify("자유무역지역의 지정 및 운영에 관한 법률 시행령 일부개정령안", ministry_id="motie").level == UNRELATED
+    assert classify("대기환경보전법 시행령 일부개정령안", ministry_id="mcee").level == UNRELATED
+    assert classify("소상공인시장진흥기금운용계획 변경(안)", ministry_id="mss").level == UNRELATED
+
+
+def test_소관이_넓은_부처도_주제어가_있으면_잡힌다():
+    # 태그가 있으면 여전히 잡혀야 한다 — adjacent 강등이 신호 자체를 죽이면 안 된다.
+    v1 = classify("희토류 공급망 안정화 대책", ministry_id="motie")
+    assert v1.is_relevant and "반도체" in v1.tags  # 핵심광물은 반도체·배터리 공급망 원료
+    v2 = classify("국민주권정부 에너지 대전환 추진계획", ministry_id="mcee")
+    assert v2.is_relevant and "에너지" in v2.tags
+    v3 = classify("중소기업 기술탈취 근절 그간성과 및 보완과제", ministry_id="mss")
+    assert v3.is_relevant and "지식재산" in v3.tags  # 산업기술보호는 지식재산 보호의 일종
+
+
 def test_전력_동음이의어를_에너지로_오탐하지_않는다():
     # 全力(전력투구·전력해 주시기)과 電力은 표기가 같다. 실측에서 대통령
     # 발언 11회 중 5회가 全力이었다. 단독 `전력`을 키워드로 쓰면 안 된다.

@@ -55,8 +55,13 @@ KNOWN_CATEGORIES = {
     "일반안건",
     "보고안건",
 }
-# `○ 부 처 보 고 : 5건` / `※ 집중토의 : 1건`
-_SECTION_RE = re.compile(r"^[○※]\s*(.+?)\s*:\s*(\d+)\s*건")
+# `○ 부 처 보 고 : 5건` / `※ 집중토의 : 1건` — 콜론이 전각(：)으로 나오기도 한다.
+_SECTION_RE = re.compile(r"^[○※]\s*(.+?)\s*[:：]\s*(\d+)\s*건")
+
+# 보고·토의 표의 제목 칸. `1. 제목` — 항목이 하나뿐이면 번호를 생략하기도 한다.
+_ORDER_PREFIX_RE = re.compile(r"^(\d+)\.\s*(.*)$")
+# 소관 칸. `(성평등가족부)` — 항상 괄호로 감싸진다(실측 146행 전량 확인).
+_PAREN_RE = re.compile(r"^\((.+)\)$")
 # `국무총리(공정거래위원회)` / `국무총리직무대행(고용노동부)`
 # 처·위원회는 독자 제출권이 없어 총리 명의로 올라온다. **실소관은 괄호 안**이다.
 _DELEGATED_RE = re.compile(r"^국무총리(?:직무대행)?\((.+?)\)$")
@@ -83,14 +88,25 @@ class AgendaItem:
     cabinet_result: str  # 국무회의 결과
 
 
+SECTION_DISCUSSION = "집중토의"
+SECTION_REPORT = "부처보고"
+SECTION_COOPERATION = "협조사항"
+
+
 @dataclass
 class ReportItem:
-    """보고·토의 안건 한 건. 발언 레이어와 이어지는 고리다."""
+    """보고·토의 안건 한 건.
 
-    section: str  # 집중토의 · 부처보고
+    의안 표(AgendaItem)가 의결 결과를 담는다면, 이쪽은 **그 자리에서 어떤
+    주제가 다뤄졌는지**를 담는다. 의결까지 가지 않는 정책 토의·보고가 많아
+    의안 표만으로는 안 잡히는 의제가 여기 있다(예: 하반기 경제성장전략 보고는
+    일반안건이 아니라 부처보고로만 잡힌다).
+    """
+
+    section: str  # 집중토의 · 부처보고 · 협조사항
     order: int
     title: str
-    ministry: str
+    ministry_raw: str  # 원문 그대로 (예: `관계부처`처럼 특정 부처가 아닐 수 있음)
 
 
 @dataclass
@@ -344,5 +360,83 @@ def parse_agenda_items(doc: dict) -> list[AgendaItem]:
                 continue
             seen.add(item.bill_no)
             items.append(item)
+
+    return items
+
+
+def _section_label(text: str) -> tuple[str, int] | None:
+    """구획 문단이 보고·토의 섹션을 여는지 본다.
+
+    `○ 법 률 공 포 안 : 16건`처럼 의안 유형과 같은 모양이라, KNOWN_CATEGORIES에
+    속하면 의안 표 라벨이지 보고·토의 섹션이 아니다. 여기서 걸러야 한다
+    (놓치면 의안 표를 2번짜리 보고 표로 잘못 읽는다).
+    """
+    raw = collapse(text)
+    packed = re.sub(r"\s+", "", raw)
+    if "차관회의" in packed or "즉석안건" in packed:
+        return None  # 의안 표 소속 절차 라벨
+
+    m = _SECTION_RE.match(despace(raw))
+    if not m:
+        return None
+    section = re.sub(r"\s+", "", m.group(1))
+    if section in KNOWN_CATEGORIES or section == "일반안":
+        return None
+    return section, int(m.group(2))
+
+
+def _is_report_table(block: dict) -> bool:
+    """보고·토의 표인지. 2열이고 의안 표(6열)가 아니다."""
+    if block.get("type") != "table":
+        return False
+    table = block["table"]
+    return table["cols"] == 2 and bool(table["cells"])
+
+
+def parse_report_table(block: dict, section: str) -> list[ReportItem]:
+    """보고·토의 표 하나를 항목 목록으로 바꾼다."""
+    items: list[ReportItem] = []
+    for row in block["table"]["cells"]:
+        texts = _cell_texts(row)
+        title_cell = texts[0] if texts else ""
+        if not title_cell:
+            continue  # 빈 머리행
+
+        m = _ORDER_PREFIX_RE.match(title_cell)
+        order, title = (int(m.group(1)), m.group(2)) if m else (len(items) + 1, title_cell)
+
+        ministry_cell = texts[1] if len(texts) > 1 else ""
+        pm = _PAREN_RE.match(ministry_cell)
+        ministry_raw = pm.group(1) if pm else ministry_cell
+
+        items.append(
+            ReportItem(section=section, order=order, title=title, ministry_raw=ministry_raw)
+        )
+    return items
+
+
+def parse_report_items(doc: dict) -> list[ReportItem]:
+    """문서 전체에서 부처보고·집중토의·협조사항을 모은다.
+
+    이 안건들은 의안 표에 없다. 대통령이 그 자리에서 무슨 보고를 받고 무슨
+    토의를 했는지는 여기서만 잡힌다 — 예를 들어 「2026년 하반기 경제성장전략」
+    보고는 의결 절차를 거치지 않아 AgendaItem에는 나타나지 않는다.
+    """
+    items: list[ReportItem] = []
+    pending: tuple[str, int] | None = None
+
+    for block in doc.get("blocks", []):
+        if block.get("type") != "table":
+            label = _section_label(block.get("text", ""))
+            if label is not None:
+                pending = label
+            continue
+
+        if pending is None or not _is_report_table(block):
+            continue
+
+        section, declared = pending
+        items.extend(parse_report_table(block, section))
+        pending = None  # 표를 하나 소비했으니 다음 라벨을 기다린다
 
     return items

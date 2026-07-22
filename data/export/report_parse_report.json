@@ -1,0 +1,31 @@
+{
+  "meetings_parsed": 64,
+  "items_total": 138,
+  "count_mismatches": [],
+  "failures": [],
+  "ministry_problems": [
+    {
+      "issue": "미등록 기관",
+      "name": "관계부처",
+      "date": "2025-09-02"
+    },
+    {
+      "issue": "미등록 기관",
+      "name": "관계부처",
+      "date": "2025-09-09"
+    },
+    {
+      "issue": "미등록 기관",
+      "name": "관계부처",
+      "date": "2025-09-16"
+    },
+    {
+      "issue": "미등록 기관",
+      "name": "관계부처",
+      "date": "2025-10-22"
+    }
+  ],
+  "unresolved_ministries": [
+    "관계부처"
+  ]
+}

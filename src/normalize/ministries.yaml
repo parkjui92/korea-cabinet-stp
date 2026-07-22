@@ -73,6 +73,12 @@ ministries:
     names: [{name: 원자력안전위원회, from: null, to: null}]
     category: 위원회
 
+  - id: naisc
+    names: [{name: 국가인공지능전략위원회, from: null, to: null}]
+    aliases: [국가인공지능위원회]  # 전신(2024-09 설치) — 현 정부에서 개편
+    category: 위원회
+    note: AI기본법 제7조 근거 대통령 직속. 대통령이 위원장.
+
   # ── 예산·규제(과기정책 급소가 여기 숨는다) ──────────────────────
   - id: moef
     names: [{name: 기획재정부, from: null, to: 2026-01-01}]
@@ -245,12 +251,26 @@ ministries:
     category: 청
   - id: spo
     names: [{name: 검찰청, from: null, to: null}]
+    aliases: [대검찰청]  # 관행상 혼용. 공소청·중대범죄수사청 분리는 2026-09 예정 — 그 전까지 동일 기관
     category: 청
 
 # 과기정책 1차 필터에 쓰는 소관부처 화이트리스트.
-# 여기 없더라도 주제 태그로 잡히면 '연관'으로 올라온다 —
-# R&D 예산(기재부·예산처)·규제(국무조정실)가 대표적이다.
+#
+# core = "존재 목적 자체가 과기정책"인 기관. 이 기관이 내는 안건은 주제 태그
+# 없이도 핵심으로 잡는다 — 국가데이터처의 「국가통계위원회 규정」처럼 제목에
+# 'AI'·'데이터' 같은 단어가 없어도 그 자체로 과기정책이기 때문이다.
+#
+# adjacent = 소관이 넓어 과기정책이 그 일부일 뿐인 기관. 반드시 주제 태그가
+# 함께 걸려야 '연관'으로 잡는다.
+#
+# 실측(2,190건 안건 기준)으로 잡은 오탐: motie·mcee·mss를 core에 넣었더니
+# 태그 없이 core로 잡힌 안건이 motie 43건 중 32건(74%), mcee 59건 중 47건
+# (80%), mss 31건 중 30건(97%)이었다. 내용은 "소상공인시장진흥기금"·
+# "대기환경보전법"·"자유무역지역"처럼 무역·환경규제·소상공인지원일 뿐 과기
+# 정책이 아니었다. 이 세 부처는 소관이 넓어 기술 이슈가 일부일 뿐이므로
+# adjacent로 내리고 태그 매칭을 요구한다. R&D 예산(기재부·예산처)·규제
+# (국무조정실)도 같은 이유로 adjacent다.
 science_tech_core:
-  [msit, motie, mcee, kdata, kipo, mss, kasa, nssc]
+  [msit, kdata, kipo, kasa, nssc, naisc]
 science_tech_adjacent:
-  [moef, moe_fin, mopb, opm, moe, mohw, molit, mafra, mof, kcc, pipc, moleg]
+  [motie, mcee, mss, moef, moe_fin, mopb, opm, moe, mohw, molit, mafra, mof, kcc, pipc, moleg]
