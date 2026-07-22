@@ -145,7 +145,25 @@ def parse_with_kordoc(path: Path, kordoc: str = "kordoc") -> dict:
 
 
 def _cell_texts(row: list[dict]) -> list[str]:
-    return [collapse(c.get("text")) for c in row]
+    """행을 논리 칸 목록으로 바꾼다. colSpan을 따라간다.
+
+    kordoc은 병합 셀을 하나로 합치지 않는다 — 첫 물리 칸에 값을 넣고 나머지
+    (colSpan-1)개 물리 칸을 빈 문자열로 채운다. 6칸짜리 표가 물리적으로는
+    11칸(colSpans=[2,1,2,1,2,1,1,3,1,1,1])으로 나오는 문서가 실제로 있다
+    (2023-037). 고정 인덱스로 읽으면 제출월일 칸에 있어야 할 날짜가 제출기관
+    칸으로 밀려 들어간다. colSpan만큼 건너뛰어 논리 칸을 복원해야 한다.
+
+    2025-2026 문서는 colSpan이 대부분 1이라 이 함수는 그 경우 항등 함수와
+    같다 — 최근 데이터가 우연히 안 걸렸을 뿐 항상 옳은 일반형이다.
+    """
+    texts: list[str] = []
+    skip_until = 0
+    for i, cell in enumerate(row):
+        if i < skip_until:
+            continue
+        texts.append(collapse(cell.get("text")))
+        skip_until = i + cell.get("colSpan", 1)
+    return texts
 
 
 def _is_spanning_label(row: list[dict], total_cols: int) -> bool:
@@ -362,6 +380,65 @@ def parse_agenda_items(doc: dict) -> list[AgendaItem]:
             items.append(item)
 
     return items
+
+
+def _label_declaration(text: str) -> tuple[str, int] | None:
+    """`○ 법 률 공 포 안 : 3건` / `법 률 안 ( 2건 )` → (유형, 건수)."""
+    m = _CATEGORY_RE.match(despace(collapse(text)).lstrip("○※-·").strip())
+    if not m:
+        return None
+    key = "일반안건" if m.group(1) == "일반안" else m.group(1)
+    return key, int(m.group(2))
+
+
+def declared_counts(doc: dict) -> dict[str, int]:
+    """문서가 스스로 밝힌 유형별 선언 건수.
+
+    `parse_agenda_items`가 category를 정할 때 쓰는 **우선순위를 그대로** 따른다.
+    같은 기준으로 세지 않으면 비교 자체가 무의미하다.
+
+      · 표지 요약표(일시·장소와 함께 건수를 다시 적는 표)는 건너뛴다.
+        본문과 같은 숫자를 중복 선언한다(2018-054: 법률공포안 103건이 표지·
+        본문에 각각 등장).
+      · 한 의안 표에 대해 **표 안 구분행이 있으면 그것만** 센다. 표 앞 문단
+        라벨은 같은 선언의 다른 표현일 뿐이라, 둘 다 더하면 정확히 2배가 된다
+        (2024-042: 법률공포안이 문단 `○ 법 률 공 포 안 : 3건`과 구분행
+        `법 률 공 포 안 (3건 )`에 중복 등장 → 6건으로 부풀려짐).
+      · 구분행이 없는 표에서만 앞 문단 라벨을 쓴다(hwpx본이 이 형태다).
+
+    같은 유형이 서로 다른 의안 표에 나뉘어 나오면 합산한다 — 별개 묶음이다
+    (2024-042: 일반안건이 두 표에 3건 + 10건 = 13건).
+    """
+    counts: dict[str, int] = {}
+    pending: tuple[str, int] | None = None
+
+    for block in doc.get("blocks", []):
+        if block.get("type") != "table":
+            decl = _label_declaration(block.get("text", ""))
+            if decl:
+                pending = decl
+            elif collapse(block.get("text", "")).startswith(("○", "※")):
+                # 절차 구분(차관회의 심의안건 등) — 유형 선언이 아니다.
+                pending = None
+            continue
+
+        if not _is_bill_table(block):
+            continue
+
+        table = block["table"]
+        dividers: list[tuple[str, int]] = []
+        for row in table["cells"]:
+            texts = _cell_texts(row)
+            if texts and _is_spanning_label(row, table["cols"]):
+                decl = _label_declaration(texts[0])
+                if decl:
+                    dividers.append(decl)
+
+        for key, num in dividers or ([pending] if pending else []):
+            counts[key] = counts.get(key, 0) + num
+        pending = None
+
+    return counts
 
 
 def _section_label(text: str) -> tuple[str, int] | None:

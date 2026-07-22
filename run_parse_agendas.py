@@ -17,17 +17,19 @@
 from __future__ import annotations
 
 import json
-import re
-
 import sys
 from dataclasses import asdict
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
 
-from src.collect.agenda_doc import NON_RESOLVED_CATEGORIES, parse_agenda_items, parse_with_kordoc
+from src.collect.agenda_doc import (
+    NON_RESOLVED_CATEGORIES,
+    declared_counts,
+    parse_agenda_items,
+    parse_with_kordoc,
+)
 from src.normalize.ministries import resolve, validate_against_observed
-from src.normalize.textnorm import collapse, despace
 
 ROOT = Path(__file__).parent
 MANIFEST = ROOT / "data/export/attachment_manifest.jsonl"
@@ -35,31 +37,9 @@ OUT = ROOT / "data/export/agenda_items.jsonl"
 REPORT = ROOT / "data/export/agenda_parse_report.json"
 KORDOC = str(Path.home() / "node_modules/.bin/kordoc")
 
-# 머리표의 `법 률 안 : 3건` — 문서가 스스로 밝힌 건수.
-_DECLARED_RE = re.compile(r"(법률공포안|법률안|대통령령안|총리령안|일반안건|일반안|보고안건)\s*[(:：]?\s*(\d+)\s*건")
-
 
 def run_kordoc(path: Path) -> dict:
     return parse_with_kordoc(path, kordoc=KORDOC)
-
-
-def declared_counts(doc: dict) -> dict[str, int]:
-    """문서 머리표에 적힌 유형별 건수."""
-    counts: dict[str, int] = {}
-    for block in doc["blocks"]:
-        text = (
-            " ".join(
-                c["text"]
-                for row in block["table"]["cells"]
-                for c in row
-            )
-            if block["type"] == "table"
-            else block.get("text", "")
-        )
-        for name, num in _DECLARED_RE.findall(despace(collapse(text))):
-            key = "일반안건" if name == "일반안" else name
-            counts.setdefault(key, int(num))
-    return counts
 
 
 def main() -> None:
@@ -101,9 +81,22 @@ def main() -> None:
         for item in parsed:
             actual[item.category] = actual.get(item.category, 0) + 1
 
-        if declared and declared != actual:
+        # 선언된 유형만 대조한다. 문서가 건수를 안 밝힌 유형(hwpx본의
+        # `○ 법 률 공 포 안`처럼 건수 없는 라벨)은 '주장 없음'이지 '0건 주장'이
+        # 아니다. 이걸 불일치로 세면 문서가 조용한 것을 틀렸다고 보고하게 된다.
+        diff = {
+            key: {"declared": num, "actual": actual.get(key, 0)}
+            for key, num in declared.items()
+            if actual.get(key, 0) != num
+        }
+        if diff:
             mismatches.append(
-                {"meeting": meeting_key, "declared": declared, "actual": actual}
+                {
+                    "meeting": meeting_key,
+                    "diff": diff,
+                    "declared": declared,
+                    "actual": actual,
+                }
             )
 
         for item in parsed:
@@ -117,7 +110,7 @@ def main() -> None:
             items.append(row)
             observed.append((item.submitter, rec["date"]))
 
-        flag = " ★불일치" if declared and declared != actual else ""
+        flag = " ★불일치" if diff else ""
         print(f"[{i:>3}] {meeting_key} 안건 {len(parsed):>2}건 {actual}{flag}")
 
     with OUT.open("w", encoding="utf-8") as f:

@@ -1,7 +1,15 @@
 {
-  "meetings_parsed": 64,
-  "items_total": 138,
-  "count_mismatches": [],
+  "meetings_parsed": 444,
+  "items_total": 151,
+  "count_mismatches": [
+    {
+      "meeting": "2020-038",
+      "declared": {
+        "부처보고": 1
+      },
+      "actual": {}
+    }
+  ],
   "failures": [],
   "ministry_problems": [
     {

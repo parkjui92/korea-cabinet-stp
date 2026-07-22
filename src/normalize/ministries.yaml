@@ -168,8 +168,12 @@ ministries:
     aliases: [해수부]
     category: 부
   - id: mpva
-    names: [{name: 국가보훈부, from: null, to: null}]
+    names:
+      - {name: 국가보훈처, from: null, to: 2023-06-04}
+      - {name: 국가보훈부, from: 2023-06-05, to: null}
     category: 부
+    lineage:
+      - {kind: elevated, effective_on: 2023-06-05, from_name: 국가보훈처}
   - id: fsc
     names: [{name: 금융위원회, from: null, to: null}]
     aliases: [금융위]
@@ -182,6 +186,11 @@ ministries:
     names: [{name: 국민권익위원회, from: null, to: null}]
     aliases: [권익위]
     category: 위원회
+  - id: nhrck
+    names: [{name: 국가인권위원회, from: null, to: null}]
+    aliases: [인권위]
+    category: 위원회
+    note: 헌법기관 성격의 독립기구(행정부 소속 아님). 국무회의 안건 제출자로 등장.
   - id: pipc
     names: [{name: 개인정보보호위원회, from: null, to: null}]
     aliases: [개인정보위]
@@ -196,7 +205,10 @@ ministries:
       - {kind: rename, effective_on: 2025-10-01}
   - id: mfds
     names: [{name: 식품의약품안전처, from: null, to: null}]
-    aliases: [식약처]
+    # `식품의약품안전저`(처→저)는 2020-060 의사일정 원문 자체의 오탈자.
+    # markdown 원문(`국무총리<br>(식품의약품<br>안전저)`)으로 확인, 내용은
+    # 마스크 긴급수급조정조치라 식약처 소관이 명백하다.
+    aliases: [식약처, 식품의약품안전저]
     category: 처
   - id: mpm
     names: [{name: 인사혁신처, from: null, to: null}]

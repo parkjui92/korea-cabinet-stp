@@ -1,9 +1,9 @@
 {
-  "meetings_parsed": 61,
-  "utterances_total": 1107,
-  "explicit_attribution": 462,
-  "document_default": 645,
-  "distinct_speakers": 23,
+  "meetings_parsed": 238,
+  "utterances_total": 4603,
+  "explicit_attribution": 469,
+  "document_default": 4134,
+  "distinct_speakers": 24,
   "top_speakers": [
     [
       "이 대통령",
@@ -12,6 +12,10 @@
     [
       "이재명 대통령",
       87
+    ],
+    [
+      "윤 대통령",
+      7
     ],
     [
       "사회(행안부 의정관)",

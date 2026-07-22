@@ -3,3 +3,6 @@ node_modules/
 __pycache__/
 *.pyc
 data/raw/
+# 실행 로그 — 재실행하면 다시 생긴다. 검증 결과는 data/export/*_report.json에
+# 구조화돼 남으므로 로그 자체는 이력으로 둘 가치가 없다.
+data/*.log
