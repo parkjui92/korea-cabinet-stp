@@ -83,3 +83,14 @@ def test_소관미상이어도_강태그면_핵심이다():
     v = classify("반도체 특별법 시행령 일부개정령안", ministry_id=None)
     assert v.level == CORE
     assert "반도체" in v.tags
+
+
+def test_전력_동음이의어를_에너지로_오탐하지_않는다():
+    # 全力(전력투구·전력해 주시기)과 電力은 표기가 같다. 실측에서 대통령
+    # 발언 11회 중 5회가 全力이었다. 단독 `전력`을 키워드로 쓰면 안 된다.
+    for text in ("내각 전 부처가 전력투구해 주시기 바랍니다", "조속한 정상화에 전력해 주십시오"):
+        tags, _, _ = match_tags(text)
+        assert "에너지" not in tags, text
+    # 電力 의미가 확정되는 복합어는 잡혀야 한다.
+    assert "에너지" in match_tags("전력수급 기본계획 수립")[0]
+    assert "에너지" in match_tags("전력망 확충 특별법")[0]
