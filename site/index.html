@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>과학기술정책 국무회의 아카이브</title>
+<meta name="description" content="2018-09~2026-07 국무회의 안건 16,742건을 공식 의사일정 원문에서 추출해 과학기술정책 축으로 분류한 아카이브">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<a class="skip" href="#main">본문 바로가기</a>
+
+<header class="top">
+  <div class="wrap">
+    <h1>과학기술정책 국무회의 아카이브</h1>
+    <p class="sub">
+      국무회의 <strong>의사일정</strong> 원문에서 안건 전수를 추출해 과학기술정책 축으로 분류했습니다.
+      <span class="range" id="metaRange"></span>
+    </p>
+  </div>
+</header>
+
+<main id="main" class="wrap">
+
+  <section class="stats" id="stats" aria-label="집계"></section>
+
+  <section class="controls" aria-label="검색·필터">
+    <div class="row">
+      <label class="field grow">
+        <span class="label">검색</span>
+        <input type="search" id="q" placeholder="안건명·부처명으로 검색" autocomplete="off">
+      </label>
+      <label class="field">
+        <span class="label">기간</span>
+        <select id="era">
+          <option value="">전체</option>
+          <option value="2018-09-01|2022-05-09">2018-09 ~ 2022-05</option>
+          <option value="2022-05-10|2025-05-31">2022-05 ~ 2025-05</option>
+          <option value="2025-06-01|2026-12-31">2025-06 ~</option>
+        </select>
+      </label>
+      <label class="field">
+        <span class="label">소관</span>
+        <select id="ministry"><option value="">전체</option></select>
+      </label>
+      <label class="field">
+        <span class="label">주제</span>
+        <select id="tag"><option value="">전체</option></select>
+      </label>
+    </div>
+
+    <div class="row toggles">
+      <label class="chk">
+        <input type="checkbox" id="stcOnly" checked>
+        <span>과학기술정책 관련만</span>
+      </label>
+      <label class="chk">
+        <input type="checkbox" id="policyOnly">
+        <span>정책안건만 <em>(법률공포·직제·인사 제외)</em></span>
+      </label>
+      <span class="spacer"></span>
+      <button type="button" id="reset" class="ghost">필터 초기화</button>
+    </div>
+
+    <p class="hint" id="hint"></p>
+  </section>
+
+  <section aria-label="안건 목록">
+    <div class="tablewrap">
+      <table id="tbl">
+        <thead>
+          <tr>
+            <th scope="col" class="c-date">개최일</th>
+            <th scope="col" class="c-sess">회차</th>
+            <th scope="col" class="c-cat">유형</th>
+            <th scope="col">안건명</th>
+            <th scope="col" class="c-min">소관</th>
+            <th scope="col" class="c-tag">판정·주제</th>
+          </tr>
+        </thead>
+        <tbody id="rows"></tbody>
+      </table>
+    </div>
+    <div class="more">
+      <button type="button" id="more" class="ghost">더 보기</button>
+      <span id="shown" class="muted"></span>
+    </div>
+  </section>
+
+  <section class="notes" aria-label="읽는 법">
+    <h2>이 자료를 읽을 때</h2>
+
+    <details>
+      <summary><strong>분류 기준</strong> — 무엇을 '과학기술정책'으로 보았나</summary>
+      <p>
+        두 축으로 판정합니다. <strong>소관부처</strong>(과기정통부·국가데이터처·지식재산처·
+        우주항공청·원자력안전위원회·국가인공지능전략위원회)와 <strong>주제 태그</strong>
+        (AI·데이터·반도체·R&amp;D예산·에너지·바이오·우주항공·디지털전환·지식재산·규제혁신 등)입니다.
+      </p>
+      <p>
+        부처만 보면 놓칩니다. R&amp;D 예산은 기획재정부, 규제혁신은 국무조정실 소관으로 올라오기
+        때문입니다. 반대로 산업통상부·기후에너지환경부·중소벤처기업부는 소관이 넓어
+        (무역·환경규제·소상공인지원) 주제 태그가 함께 걸릴 때만 포함합니다.
+      </p>
+      <p>각 행의 <span class="tag why">판정근거</span>에 어떤 축·어느 낱말로 걸렸는지 적혀 있습니다.</p>
+    </details>
+
+    <details>
+      <summary><strong>점유율의 함정</strong> — 왜 법제처가 1위가 아닌가</summary>
+      <p>
+        제출기관을 그대로 세면 법제처가 전체 1위(6,110건)가 됩니다. 그런데 대부분이
+        <strong>법률공포안</strong>이에요. 국회를 통과한 법률을 공포하는 절차이지 법제처의
+        정책 발의가 아닙니다. 행정안전부의 상당수도 타 부처 <strong>직제 개정령</strong>으로,
+        정부조직 관리자로서 대신 올리는 것입니다.
+      </p>
+      <p>
+        그래서 안건마다 역할을 나눠 두었습니다 — 정책안건 9,417 · 법률공포 6,013 ·
+        조직직제 993 · 인사 319. 부처 간 의제 점유를 보려면 <strong>정책안건만</strong>
+        필터를 켜세요.
+      </p>
+    </details>
+
+    <details>
+      <summary><strong>조직개편 주의</strong> — 시계열을 그대로 이으면 안 되는 경우</summary>
+      <p>
+        부처명은 시점마다 다릅니다. 같은 조직이라도 <span class="mono">기획재정부 →
+        재정경제부·기획예산처</span>(2026-01-02 분리), <span class="mono">환경부 →
+        기후에너지환경부</span>(2025-10-01) 식으로 바뀝니다. 이 사이트는 안정 ID로 묶어
+        보여줍니다.
+      </p>
+      <p>
+        특히 <strong>산업통상자원부 → 산업통상부</strong>는 개명처럼 보이지만
+        <strong>에너지 기능이 기후에너지환경부로 넘어갔습니다</strong>(2025-10-01).
+        모르고 시계열을 그리면 그 날짜의 급락을 정책 변화로 오독하게 됩니다.
+      </p>
+    </details>
+
+    <details>
+      <summary><strong>이 자료로 알 수 없는 것</strong></summary>
+      <p>
+        <strong>의안 심의는 비공개입니다.</strong> 안건별 찬반이나 심의 발언은 어떤 공개
+        출처에도 없습니다. 여기서 얻는 것은 <em>무엇이 상정·의결되었는가</em>이지
+        <em>어떻게 논의되었는가</em>가 아닙니다. 연구에서 "국무회의에서 논의되었다"고
+        쓸 때 반드시 구분해야 합니다.
+      </p>
+      <p>
+        또한 일부 의사일정은 머리표에 적힌 건수와 실제 실린 의안 수가 다릅니다
+        (444회 중 39회, 전부 ±2 이내). 안건이 철회됐는데 머리표를 안 고친 경우로,
+        독립 파서로 교차 확인했습니다. <strong>표에 실제 의안번호가 붙은 쪽</strong>을
+        사실로 삼았습니다.
+      </p>
+    </details>
+  </section>
+</main>
+
+<footer class="foot">
+  <div class="wrap">
+    <p class="src">
+      <strong>출처</strong> ·
+      <a href="https://www.korea.kr/briefing/stateCouncilList.do" target="_blank" rel="noreferrer noopener">대한민국 정책브리핑 국무회의 브리핑</a>
+      (문화체육관광부) 첨부 「의사일정」·「모두말씀」 문서에서 추출.
+    </p>
+    <p class="src">
+      본 저작물은 <a href="https://www.kogl.or.kr/info/license.do" target="_blank" rel="noreferrer noopener">공공누리 제1유형(출처표시)</a>
+      조건에 따라 이용할 수 있는 대한민국 정책브리핑의 저작물을 이용하였습니다.
+      원문의 취지와 다르게 변경·이용한 경우 그 책임은 이용자에게 있습니다.
+    </p>
+    <p class="src muted">
+      사진·이미지·동영상은 제3자 저작물이므로 사용하지 않았습니다.
+      분류·집계는 원문을 기계적으로 가공한 2차 결과이며, 각 행의 원문 링크로 확인할 수 있습니다.
+    </p>
+  </div>
+</footer>
+
+<script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,16 @@
+# Cloudflare Pages 헤더 규칙.
+# bundle.json은 5MB지만 gzip/brotli로 0.4MB 수준이며, Pages가 자동 압축한다.
+
+/data/*
+  Cache-Control: public, max-age=3600
+  Access-Control-Allow-Origin: *
+
+/*.css
+  Cache-Control: public, max-age=86400
+
+/*.js
+  Cache-Control: public, max-age=86400
+
+/*
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
