@@ -1,0 +1,8 @@
+{
+  "name": "sci-cabinet",
+  "private": true,
+  "description": "과학기술정책 국무회의 아카이브 — HWP/HWPX 파싱에 kordoc CLI 사용",
+  "dependencies": {
+    "kordoc": "^4.2.5"
+  }
+}

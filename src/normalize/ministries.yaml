@@ -1,0 +1,256 @@
+# 부처 정규화 테이블
+#
+# 왜 필요한가: 같은 조직이 시점마다 다른 이름으로 문서에 등장한다. 문자열로
+# 집계하면 조직개편일에 시계열이 끊기고, 개편 전후를 그냥 이으면 서로 다른
+# 범위의 조직을 같은 것으로 착각한다.
+#
+# `lineage`의 kind가 rename이 아니면 **집계 시 주의가 필요하다**. 특히
+# 산업통상자원부→산업통상부는 개명처럼 보이지만 에너지 기능이 통째로 빠져
+# 나갔다. 이 경계를 모르고 R&D·에너지 의제 점유를 시계열로 그리면 2025-10-01에
+# 원인 모를 급락이 생긴다.
+#
+# 출처: 정부조직법 개정(2025-09-26 국회 통과, 2025-10-01 시행 / 기재부 분리는
+# 2026-01-02 시행). 날짜는 뉴스 확인값이며, 수집된 문서의 실제 등장 시점과
+# 대조해 검증한다(validate_against_observed).
+
+meta:
+  verified_on: 2026-07-22
+  confidence: 뉴스 교차확인 — 관보 원문 대조 미완
+
+ministries:
+  # ── 과기정책 핵심 ──────────────────────────────────────────────
+  - id: msit
+    names: [{name: 과학기술정보통신부, from: null, to: null}]
+    aliases: [과기정통부, 과기부]
+    category: 부
+
+  - id: motie
+    names:
+      - {name: 산업통상자원부, from: null, to: 2025-09-30}
+      - {name: 산업통상부, from: 2025-10-01, to: null}
+    aliases: [산업부, 산자부]
+    category: 부
+    lineage:
+      - {kind: rename_with_transfer, effective_on: 2025-10-01, to: mcee,
+         what: 에너지 정책(전력·재생에너지·에너지효율), note: 공무원 220여명·산하기관 21곳 이관}
+
+  - id: mcee
+    names:
+      - {name: 환경부, from: null, to: 2025-09-30}
+      - {name: 기후에너지환경부, from: 2025-10-01, to: null}
+    aliases: [기후부, 기후에너지부]
+    category: 부
+    lineage:
+      - {kind: absorbed, effective_on: 2025-10-01, from: motie, what: 에너지 정책}
+
+  - id: kdata
+    names:
+      - {name: 통계청, from: null, to: 2025-09-30}
+      - {name: 국가데이터처, from: 2025-10-01, to: null}
+    category: 처
+    note: 청 → 처 승격, 국무총리 소속
+    lineage:
+      - {kind: elevated, effective_on: 2025-10-01, from_name: 통계청}
+
+  - id: kipo
+    names:
+      - {name: 특허청, from: null, to: 2025-09-30}
+      - {name: 지식재산처, from: 2025-10-01, to: null}
+    category: 처
+    lineage:
+      - {kind: elevated, effective_on: 2025-10-01, from_name: 특허청}
+
+  - id: mss
+    names: [{name: 중소벤처기업부, from: null, to: null}]
+    aliases: [중기부]
+    category: 부
+
+  - id: kasa
+    names: [{name: 우주항공청, from: null, to: null}]
+    category: 청
+
+  - id: nssc
+    names: [{name: 원자력안전위원회, from: null, to: null}]
+    category: 위원회
+
+  # ── 예산·규제(과기정책 급소가 여기 숨는다) ──────────────────────
+  - id: moef
+    names: [{name: 기획재정부, from: null, to: 2026-01-01}]
+    aliases: [기재부]
+    category: 부
+    lineage:
+      - {kind: split, effective_on: 2026-01-02, into: [moe_fin, mopb],
+         note: "경제정책·국고·세제·국제금융은 재정경제부, 예산기획은 기획예산처"}
+
+  - id: moe_fin
+    names: [{name: 재정경제부, from: 2026-01-02, to: null}]
+    aliases: [재경부]
+    category: 부
+    lineage:
+      - {kind: split_from, effective_on: 2026-01-02, from: moef}
+
+  - id: mopb
+    names: [{name: 기획예산처, from: 2026-01-02, to: null}]
+    aliases: [예산처]
+    category: 처
+    lineage:
+      - {kind: split_from, effective_on: 2026-01-02, from: moef}
+
+  - id: opm
+    names: [{name: 국무조정실, from: null, to: null}]
+    aliases: [국조실, 국무총리비서실]
+    category: 실
+
+  - id: moleg
+    names: [{name: 법제처, from: null, to: null}]
+    category: 처
+
+  # ── 그 외 (집계 분모에 필요) ────────────────────────────────────
+  - id: moe
+    names: [{name: 교육부, from: null, to: null}]
+    category: 부
+  - id: ne
+    names: [{name: 국가교육위원회, from: null, to: null}]
+    aliases: [국교위]
+    category: 위원회
+  - id: mofa
+    names: [{name: 외교부, from: null, to: null}]
+    category: 부
+  - id: mou
+    names: [{name: 통일부, from: null, to: null}]
+    category: 부
+  - id: mnd
+    names: [{name: 국방부, from: null, to: null}]
+    category: 부
+  - id: moj
+    names: [{name: 법무부, from: null, to: null}]
+    category: 부
+  - id: mois
+    names: [{name: 행정안전부, from: null, to: null}]
+    aliases: [행안부]
+    category: 부
+  - id: mcst
+    names: [{name: 문화체육관광부, from: null, to: null}]
+    aliases: [문체부]
+    category: 부
+  - id: mafra
+    names: [{name: 농림축산식품부, from: null, to: null}]
+    aliases: [농식품부]
+    category: 부
+  - id: mohw
+    names: [{name: 보건복지부, from: null, to: null}]
+    aliases: [복지부]
+    category: 부
+  - id: moel
+    names: [{name: 고용노동부, from: null, to: null}]
+    aliases: [노동부, 고용부]
+    category: 부
+  - id: mogef
+    names:
+      - {name: 여성가족부, from: null, to: 2025-09-30}
+      - {name: 성평등가족부, from: 2025-10-01, to: null}
+    aliases: [여가부]
+    category: 부
+    lineage:
+      - {kind: rename, effective_on: 2025-10-01}
+  - id: molit
+    names: [{name: 국토교통부, from: null, to: null}]
+    aliases: [국토부]
+    category: 부
+  - id: mof
+    names: [{name: 해양수산부, from: null, to: null}]
+    aliases: [해수부]
+    category: 부
+  - id: mpva
+    names: [{name: 국가보훈부, from: null, to: null}]
+    category: 부
+  - id: fsc
+    names: [{name: 금융위원회, from: null, to: null}]
+    aliases: [금융위]
+    category: 위원회
+  - id: ftc
+    names: [{name: 공정거래위원회, from: null, to: null}]
+    aliases: [공정위]
+    category: 위원회
+  - id: acrc
+    names: [{name: 국민권익위원회, from: null, to: null}]
+    aliases: [권익위]
+    category: 위원회
+  - id: pipc
+    names: [{name: 개인정보보호위원회, from: null, to: null}]
+    aliases: [개인정보위]
+    category: 위원회
+  - id: kcc
+    names:
+      - {name: 방송통신위원회, from: null, to: 2025-09-30}
+      - {name: 방송미디어통신위원회, from: 2025-10-01, to: null}
+    aliases: [방통위]
+    category: 위원회
+    lineage:
+      - {kind: rename, effective_on: 2025-10-01}
+  - id: mfds
+    names: [{name: 식품의약품안전처, from: null, to: null}]
+    aliases: [식약처]
+    category: 처
+  - id: mpm
+    names: [{name: 인사혁신처, from: null, to: null}]
+    category: 처
+  - id: kfs
+    names: [{name: 산림청, from: null, to: null}]
+    category: 청
+  - id: kcs
+    names: [{name: 관세청, from: null, to: null}]
+    category: 청
+  - id: nts
+    names: [{name: 국세청, from: null, to: null}]
+    category: 청
+  - id: knpa
+    names: [{name: 경찰청, from: null, to: null}]
+    category: 청
+  - id: kma
+    names: [{name: 기상청, from: null, to: null}]
+    category: 청
+  - id: cha
+    names: [{name: 국가유산청, from: null, to: null}]
+    category: 청
+  - id: kdca
+    names: [{name: 질병관리청, from: null, to: null}]
+    category: 청
+  - id: rda
+    names: [{name: 농촌진흥청, from: null, to: null}]
+    category: 청
+  - id: dapa
+    names: [{name: 방위사업청, from: null, to: null}]
+    category: 청
+  - id: mma
+    names: [{name: 병무청, from: null, to: null}]
+    category: 청
+  - id: nfa
+    names: [{name: 소방청, from: null, to: null}]
+    category: 청
+  - id: kcg
+    names: [{name: 해양경찰청, from: null, to: null}]
+    category: 청
+  - id: ppa
+    names: [{name: 조달청, from: null, to: null}]
+    category: 청
+  - id: oka
+    names: [{name: 재외동포청, from: null, to: null}]
+    category: 청
+  - id: naacc
+    names: [{name: 행정중심복합도시건설청, from: null, to: null}]
+    category: 청
+  - id: sda
+    names: [{name: 새만금개발청, from: null, to: null}]
+    category: 청
+  - id: spo
+    names: [{name: 검찰청, from: null, to: null}]
+    category: 청
+
+# 과기정책 1차 필터에 쓰는 소관부처 화이트리스트.
+# 여기 없더라도 주제 태그로 잡히면 '연관'으로 올라온다 —
+# R&D 예산(기재부·예산처)·규제(국무조정실)가 대표적이다.
+science_tech_core:
+  [msit, motie, mcee, kdata, kipo, mss, kasa, nssc]
+science_tech_adjacent:
+  [moef, moe_fin, mopb, opm, moe, mohw, molit, mafra, mof, kcc, pipc, moleg]
