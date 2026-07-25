@@ -298,3 +298,38 @@ python3 -m http.server 4610 --directory site         # 로컬 확인
 
 `site/`를 출력 디렉터리로 지정하면 된다. 빌드 명령 없음(정적). `_headers`에
 캐시·보안 헤더가 들어 있다.
+
+---
+
+## Phase 5 — Supabase 적재 (계량분석 백엔드)
+
+파싱·분류 결과를 Supabase Postgres(`sci-cabinet`, 서울 리전)에 정규화 테이블로
+적재했다. JSON 파일보다 SQL이 계량분석에 낫다 — GROUP BY·윈도우 함수·레이어
+조인·시계열 집계를 한 줄로, R(`RPostgres`)·Python(`psycopg2`)·브라우저 SQL 편집기
+어디서든.
+
+**테이블** (분류는 파이썬 계산값 그대로 — DB에서 재판정 안 함)
+
+| 테이블 | 행 | 내용 |
+|---|---:|---|
+| `ministry` | 54 | 부처 안정 ID·현재명·과기 티어 |
+| `meeting` | 447 | 회차·개최일·원문 링크 |
+| `agenda_item` | 16,742 | 의결 안건 (role·is_stc·tags·소관 정규화) |
+| `utterance` | 4,603 | 발언 (화자·근거등급·전문, trigram 검색 인덱스) |
+| `report_item` | 151 | 보고·토의 |
+
+**분석용 뷰** — `v_agenda`(부처명·티어·회차·정권 파생), `v_policy_agenda`
+(정책안건만 = 점유율 표준 분모), `v_meeting_summary`(회의별 요약).
+
+**보안** — 전 테이블 RLS 켜짐, anon은 **SELECT만**(쓰기 401). 어드바이저 경고 0.
+적재는 초기 1회 anon 쓰기로 했고 직후 잠갔다. 재적재 절차는 `load_supabase.sh`
+주석 참고.
+
+**의미 검색은 각자 자기 Claude Code로.** 공개 사이트에 API 키를 심지 않는
+대신, 연구자가 자기 Claude Code를 이 Supabase에 붙여 자연어로 질의한다
+(`body` 컬럼에 한국어 trigram 인덱스가 있어 유사도 검색도 됨).
+
+```bash
+uv run --with pyyaml python run_emit_rest_json.py   # REST JSON 생성
+./load_supabase.sh <ANON_KEY>                       # 갱신 절차는 스크립트 주석 참고
+```
