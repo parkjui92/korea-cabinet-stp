@@ -1,0 +1,12 @@
+{
+  // Cloudflare Workers 정적 자산 배포 설정.
+  // 이 저장소는 서버 코드 없이 site/ 하위의 정적 파일만 서빙한다.
+  // `main`(서버 스크립트)을 두지 않으면 "assets-only Worker"로 배포되어
+  // site/ 안의 HTML·CSS·JS·데이터를 그대로 웹으로 내보낸다.
+  // site/_headers 의 캐시·보안 헤더도 Workers 정적 자산이 그대로 적용한다.
+  "name": "korea-cabinet-stp",
+  "compatibility_date": "2026-07-01",
+  "assets": {
+    "directory": "./site"
+  }
+}
