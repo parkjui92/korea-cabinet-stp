@@ -21,8 +21,10 @@
 # 초기 적재는 RLS 켜기 전이라 이 단계들이 필요 없었다. 갱신부터 위 절차를 쓴다.
 
 set -euo pipefail
-ANON="${1:?사용법: ./load_supabase.sh <ANON_KEY>}"
-BASE="https://jowsfgrekxfvfoniwvpj.supabase.co/rest/v1"
+# 사용법: SUPABASE_URL=https://<ref>.supabase.co ./load_supabase.sh <ANON_KEY>
+ANON="${1:?사용법: SUPABASE_URL=... ./load_supabase.sh <ANON_KEY>}"
+SUPABASE_URL="${SUPABASE_URL:?SUPABASE_URL 환경변수를 설정하세요 (예: https://<ref>.supabase.co)}"
+BASE="${SUPABASE_URL%/}/rest/v1"
 DIR="$(dirname "$0")/data/rest"
 
 post() {
