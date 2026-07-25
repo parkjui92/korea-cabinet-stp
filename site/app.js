@@ -258,6 +258,67 @@ function drillTo(meetingKey) {
   document.querySelector(".tablewrap")?.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
+// ── CSV 내려받기 ────────────────────────────────────────────────────
+// 화면에 필터 건 그대로(state.filtered) 내보낸다. 연구자가 R·엑셀로 바로
+// 가져갈 수 있게 원문 링크·판정근거까지 포함한다. 분류값은 이미 계산돼 있다.
+function csvCell(v) {
+  const s = v == null ? "" : Array.isArray(v) ? v.join("; ") : String(v);
+  // 쉼표·따옴표·줄바꿈이 있으면 따옴표로 감싸고 내부 따옴표는 이중화.
+  return /[",\n\r]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+}
+
+function downloadCsv() {
+  const cols = [
+    ["개최일", (a) => a.date],
+    ["회차", (a) => state.meetingsByKey.get(a.meetingKey)?.session],
+    ["의안번호", (a) => a.billNo],
+    ["유형", (a) => a.category],
+    ["안건명", (a) => a.title],
+    ["소관", (a) => a.ministry],
+    ["소관ID", (a) => a.ministryId],
+    ["역할", (a) => a.role],
+    ["과기정책", (a) => (a.stc ? a.stc : "무관")],
+    ["주제태그", (a) => a.tags],
+    ["판정근거", (a) => a.why],
+    ["의결결과", (a) => a.cabinetResult],
+    ["원문링크", (a) => state.meetingsByKey.get(a.meetingKey)?.url],
+  ];
+
+  const header = cols.map((c) => c[0]).join(",");
+  const lines = state.filtered.map((a) => cols.map((c) => csvCell(c[1](a))).join(","));
+  // BOM을 앞에 붙여야 엑셀이 UTF-8 한글을 깨지 않고 연다.
+  const blob = new Blob(["﻿" + header + "\n" + lines.join("\n")], {
+    type: "text/csv;charset=utf-8",
+  });
+
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = csvFilename();
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+}
+
+function csvFilename() {
+  // 파일명에 필터 상태를 담아, 여러 번 받아도 뭘 받았는지 알 수 있게.
+  const parts = ["국무회의_안건"];
+  if (state.meetingFilter) parts.push(state.meetingFilter);
+  else {
+    if (el("stcOnly").checked) parts.push("과기정책");
+    if (el("policyOnly").checked) parts.push("정책안건");
+    const mid = el("ministry").value;
+    if (mid) parts.push(state.data.ministries[mid]?.name || mid);
+    const tag = el("tag").value;
+    if (tag) parts.push(tag);
+    const q = el("q").value.trim();
+    if (q) parts.push(q.replace(/[^\w가-힣]/g, ""));
+  }
+  parts.push(`${state.filtered.length}건`);
+  return parts.join("_") + ".csv";
+}
+
 // ── 이벤트 ──────────────────────────────────────────────────────────
 function bindEvents() {
   let timer;
@@ -272,6 +333,7 @@ function bindEvents() {
     });
   }
   el("more").addEventListener("click", more);
+  el("csv").addEventListener("click", downloadCsv);
 
   // 발언 패널·안건 표의 "회의로 가기" 버튼은 이벤트 위임으로 한 번에.
   document.addEventListener("click", (e) => {
