@@ -3,9 +3,14 @@
  * 분류(과기 판정·역할·태그)는 빌드 때 파이썬이 미리 계산해 번들에 구워 둔다.
  * 여기서 다시 판정하지 않는다 — 기준이 두 곳에 흩어지면 조용히 어긋난다.
  * 이 파일이 하는 일은 필터·검색·렌더링뿐이다.
+ *
+ * 교차 검색: 검색어는 안건 제목과 발언 전문을 동시에 훑는다. 발언에서 맞으면
+ * "그 회의 안건 보기"로 같은 회차의 의결 안건을 펼쳐 볼 수 있다 — 이게 이
+ * 아카이브의 핵심 동작이다("대통령이 X 발언한 회의에 무엇이 의결됐나").
  */
 
 const PAGE = 200; // 한 번에 그릴 행 수. 1,000건 넘게 한꺼번에 그리면 버벅인다.
+const UTT_MAX = 40; // 발언 검색 결과 표시 상한. 전문이 길어 많이 그리면 무겁다.
 
 const el = (id) => document.getElementById(id);
 const state = {
@@ -13,6 +18,7 @@ const state = {
   meetingsByKey: new Map(),
   filtered: [],
   shown: 0,
+  meetingFilter: null, // 회의 드릴다운. 설정되면 그 회차의 안건만, stcOnly 무시.
 };
 
 // ── 로드 ────────────────────────────────────────────────────────────
@@ -38,7 +44,7 @@ function renderMeta() {
     stat(meta.agendaTotal.toLocaleString(), "전체 안건"),
     stat(meta.agendaStc.toLocaleString(), "과학기술정책 관련"),
     stat((roles.get("정책안건") || 0).toLocaleString(), "정책안건"),
-    stat((roles.get("법률공포") || 0).toLocaleString(), "법률공포 (형식)"),
+    stat(state.data.utterances.length.toLocaleString(), "대통령·국무위원 발언"),
     stat(state.data.meetings.length.toLocaleString(), "회의"),
   ].join("");
 }
@@ -56,7 +62,6 @@ function tally(rows, keyFn) {
 
 // ── 선택지 채우기 ───────────────────────────────────────────────────
 function fillSelects() {
-  // 소관: 실제로 안건이 있는 부처만, 건수 많은 순.
   const counts = tally(state.data.agenda, (a) => a.ministryId);
   const opts = [...counts.entries()]
     .sort((a, b) => b[1] - a[1])
@@ -86,8 +91,11 @@ function apply() {
   const tag = el("tag").value;
   const stcOnly = el("stcOnly").checked;
   const policyOnly = el("policyOnly").checked;
+  const mf = state.meetingFilter;
 
   state.filtered = state.data.agenda.filter((a) => {
+    // 회의 드릴다운이 걸리면 그 회차 전부를 보여준다(그날 무엇이 의결됐나가 요점).
+    if (mf) return a.meetingKey === mf;
     if (stcOnly && !a.stc) return false;
     if (policyOnly && a.role !== "정책안건") return false;
     if (ministry && a.ministryId !== ministry) return false;
@@ -103,21 +111,104 @@ function apply() {
 
   state.shown = 0;
   el("rows").innerHTML = "";
+  renderUtterances(q);
+  renderMeetingBar();
   renderHint();
   more();
+}
+
+// ── 발언 교차 검색 ──────────────────────────────────────────────────
+function renderUtterances(q) {
+  const box = el("utterances");
+  // 드릴다운 중이거나 검색어가 2글자 미만이면 발언 패널을 숨긴다.
+  if (state.meetingFilter || q.length < 2) {
+    box.hidden = true;
+    box.innerHTML = "";
+    return;
+  }
+
+  const hits = state.data.utterances.filter((u) => u.text.toLowerCase().includes(q));
+  if (!hits.length) {
+    box.hidden = true;
+    box.innerHTML = "";
+    return;
+  }
+
+  const shown = hits.slice(0, UTT_MAX);
+  const rows = shown
+    .map((u) => {
+      const m = state.meetingsByKey.get(u.meetingKey);
+      const snippet = snippetAround(u.text, q);
+      return `<li>
+        <div class="u-head">
+          <span class="u-date">${u.date}</span>
+          <span class="u-who">${esc(u.speaker)}</span>
+          <button type="button" class="u-jump" data-meeting="${u.meetingKey}">제${m?.session ?? "?"}회 의결 안건 보기 →</button>
+        </div>
+        <div class="u-text">${snippet}</div>
+      </li>`;
+    })
+    .join("");
+
+  box.hidden = false;
+  box.innerHTML = `
+    <div class="u-title">
+      🎙 발언에서 <strong>${hits.length.toLocaleString()}건</strong> 찾음
+      ${hits.length > UTT_MAX ? `<span class="muted">(상위 ${UTT_MAX}건 표시)</span>` : ""}
+    </div>
+    <ul class="u-list">${rows}</ul>`;
+}
+
+function snippetAround(text, q) {
+  const i = text.toLowerCase().indexOf(q);
+  if (i < 0) return esc(text.slice(0, 160));
+  const start = Math.max(0, i - 60);
+  const end = Math.min(text.length, i + q.length + 100);
+  const pre = start > 0 ? "…" : "";
+  const post = end < text.length ? "…" : "";
+  return (
+    pre +
+    esc(text.slice(start, i)) +
+    `<mark>${esc(text.slice(i, i + q.length))}</mark>` +
+    esc(text.slice(i + q.length, end)) +
+    post
+  );
+}
+
+// ── 회의 드릴다운 표시줄 ────────────────────────────────────────────
+function renderMeetingBar() {
+  const bar = el("meetingBar");
+  if (!state.meetingFilter) {
+    bar.hidden = true;
+    bar.innerHTML = "";
+    return;
+  }
+  const m = state.meetingsByKey.get(state.meetingFilter);
+  bar.hidden = false;
+  bar.innerHTML = `
+    <span>제${m?.session ?? "?"}회 국무회의 (${m?.date ?? ""}) 의결 안건 전체를 보는 중</span>
+    <a href="${m?.url ?? "#"}" target="_blank" rel="noreferrer noopener">원문 ↗</a>
+    <button type="button" id="clearMeeting" class="ghost">← 검색으로 돌아가기</button>`;
+  el("clearMeeting").addEventListener("click", () => {
+    state.meetingFilter = null;
+    apply();
+  });
 }
 
 function renderHint() {
   const n = state.filtered.length;
   const total = state.data.agenda.length;
-  const stcOn = el("stcOnly").checked;
   const parts = [`<strong>${n.toLocaleString()}건</strong>`];
-  if (n !== total) parts.push(`(전체 ${total.toLocaleString()}건 중)`);
-  if (stcOn) parts.push("· 과학기술정책 관련만 보는 중입니다. 체크를 해제하면 전체가 나옵니다.");
+  if (state.meetingFilter) {
+    parts.push("· 이 회의의 안건 전부입니다(과기 필터 무시).");
+  } else {
+    if (n !== total) parts.push(`(전체 ${total.toLocaleString()}건 중)`);
+    if (el("stcOnly").checked) parts.push("· 과학기술정책 관련만 보는 중입니다. 체크를 해제하면 전체가 나옵니다.");
+  }
   el("hint").innerHTML = parts.join(" ");
 }
 
-// ── 렌더 ────────────────────────────────────────────────────────────
+// ── 안건 렌더 ───────────────────────────────────────────────────────
 function more() {
   const slice = state.filtered.slice(state.shown, state.shown + PAGE);
   el("rows").insertAdjacentHTML("beforeend", slice.map(row).join(""));
@@ -136,18 +227,18 @@ function row(a) {
   for (const t of a.tags) badges.push(`<span class="tag topic">${esc(t)}</span>`);
   if (a.role !== "정책안건") badges.push(`<span class="tag role">${esc(a.role)}</span>`);
 
-  // 판정 근거를 그대로 보여준다. 왜 잡혔는지 확인할 수 없는 라벨은 연구에 못 쓴다.
-  const why = a.why
-    ? `<div class="why-line">${esc(a.why)}</div>`
-    : "";
-
+  const why = a.why ? `<div class="why-line">${esc(a.why)}</div>` : "";
   const title = meeting
     ? `<a href="${meeting.url}" target="_blank" rel="noreferrer noopener">${esc(a.title)}<span class="ext">↗</span></a>`
     : esc(a.title);
+  // 드릴다운이 아닐 때만 회차를 클릭 가능하게 — 그 회의로 파고들 수 있다.
+  const sess = state.meetingFilter
+    ? `제${meeting?.session ?? "?"}회`
+    : `<button type="button" class="sess-jump" data-meeting="${a.meetingKey}">제${meeting?.session ?? "?"}회</button>`;
 
   return `<tr>
     <td class="c-date">${a.date}</td>
-    <td class="c-sess">제${meeting?.session ?? "?"}회</td>
+    <td class="c-sess">${sess}</td>
     <td class="c-cat">${esc(a.category)}</td>
     <td class="title">${title}${why}</td>
     <td class="c-min">${esc(a.ministry || "—")}</td>
@@ -161,17 +252,33 @@ function esc(s) {
   );
 }
 
+function drillTo(meetingKey) {
+  state.meetingFilter = meetingKey;
+  apply();
+  document.querySelector(".tablewrap")?.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
 // ── 이벤트 ──────────────────────────────────────────────────────────
 function bindEvents() {
   let timer;
   el("q").addEventListener("input", () => {
     clearTimeout(timer);
-    timer = setTimeout(apply, 180); // 16,742건을 매 타건마다 훑지 않는다
+    timer = setTimeout(apply, 180);
   });
   for (const id of ["era", "ministry", "tag", "stcOnly", "policyOnly"]) {
-    el(id).addEventListener("change", apply);
+    el(id).addEventListener("change", () => {
+      state.meetingFilter = null; // 필터를 만지면 드릴다운을 푼다
+      apply();
+    });
   }
   el("more").addEventListener("click", more);
+
+  // 발언 패널·안건 표의 "회의로 가기" 버튼은 이벤트 위임으로 한 번에.
+  document.addEventListener("click", (e) => {
+    const btn = e.target.closest("[data-meeting]");
+    if (btn) drillTo(btn.dataset.meeting);
+  });
+
   el("reset").addEventListener("click", () => {
     el("q").value = "";
     el("era").value = "";
@@ -179,6 +286,7 @@ function bindEvents() {
     el("tag").value = "";
     el("stcOnly").checked = true;
     el("policyOnly").checked = false;
+    state.meetingFilter = null;
     apply();
   });
 }

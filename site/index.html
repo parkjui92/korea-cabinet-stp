@@ -27,8 +27,8 @@
   <section class="controls" aria-label="검색·필터">
     <div class="row">
       <label class="field grow">
-        <span class="label">검색</span>
-        <input type="search" id="q" placeholder="안건명·부처명으로 검색" autocomplete="off">
+        <span class="label">검색 <em class="lbl-note">안건명·부처명 + 대통령·국무위원 발언 전문</em></span>
+        <input type="search" id="q" placeholder="예: 소버린, GPU, 반도체 특별법, 원전" autocomplete="off">
       </label>
       <label class="field">
         <span class="label">기간</span>
@@ -64,6 +64,10 @@
 
     <p class="hint" id="hint"></p>
   </section>
+
+  <section class="utterances" id="utterances" aria-label="발언 검색 결과" hidden></section>
+
+  <div class="meeting-bar" id="meetingBar" role="status" hidden></div>
 
   <section aria-label="안건 목록">
     <div class="tablewrap">

@@ -127,6 +127,65 @@ button.ghost:hover { background: var(--accent-soft); border-color: var(--accent)
 
 .hint { margin: 10px 0 0; font-size: 13px; color: var(--mut); }
 .hint strong { color: var(--ink); }
+.lbl-note { font-style: normal; opacity: 0.75; }
+
+/* ── 발언 교차 검색 패널 ──────────────────────────────── */
+.utterances {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--accent);
+  border-radius: var(--radius);
+  padding: 12px 14px;
+  margin-bottom: 14px;
+}
+.u-title { font-size: 13.5px; margin-bottom: 8px; }
+.u-title strong { color: var(--accent); }
+.u-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.u-list li { border-top: 1px solid var(--line); padding-top: 9px; }
+.u-list li:first-child { border-top: none; padding-top: 0; }
+.u-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 3px; }
+.u-date { font-variant-numeric: tabular-nums; font-size: 12.5px; color: var(--mut); }
+.u-who { font-size: 13px; font-weight: 600; }
+.u-jump {
+  font: inherit; font-size: 12px;
+  margin-left: auto;
+  padding: 3px 10px;
+  border: 1px solid var(--accent);
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.u-jump:hover { background: var(--accent); color: #fff; }
+.u-text { font-size: 13px; line-height: 1.55; color: var(--ink); }
+.u-text mark { background: #ffe58a; color: #3a2c00; padding: 0 1px; border-radius: 2px; }
+@media (prefers-color-scheme: dark) {
+  .u-text mark { background: #6b5410; color: #ffe9a8; }
+}
+
+/* ── 회의 드릴다운 표시줄 ─────────────────────────────── */
+.meeting-bar {
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  background: var(--accent-soft);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius);
+  padding: 9px 14px;
+  margin-bottom: 12px;
+  font-size: 13.5px;
+}
+.meeting-bar a { color: var(--accent); }
+.meeting-bar .ghost { margin-left: auto; }
+
+/* 표 안 회차 점프 버튼 */
+.sess-jump {
+  font: inherit; font-size: 13px;
+  padding: 0; border: none; background: none;
+  color: var(--accent); cursor: pointer;
+  text-decoration: underline; text-underline-offset: 2px;
+  font-variant-numeric: tabular-nums;
+}
+.sess-jump:hover { text-decoration: none; }
 
 /* ── 표 ───────────────────────────────────────────────── */
 .tablewrap {

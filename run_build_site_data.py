@@ -137,14 +137,14 @@ def main() -> None:
             }
         )
 
-    # ── 발언 (과기정책 관련만) ──────────────────────────────────────
-    # 4,603건 전부는 사이트에서 쓸 일이 없고, 대통령 모두발언 전문은 원문
-    # 링크로 충분하다. 과기 관련만 추려 회차별 맥락으로 붙인다.
+    # ── 발언 (전체) ─────────────────────────────────────────────────
+    # 교차 검색("이 낱말이 나온 발언 → 그 회의 → 그날 의결")이 성립하려면
+    # 발언 전문이 검색 대상이어야 한다. 과기 관련만 담으면 "GPU"·"독자적"처럼
+    # 태그엔 없지만 실제로 언급된 낱말을 못 찾는다. 4,603건 전부 넣되(gzip 후
+    # 부담 없음), 과기 관련 여부는 stc 플래그로 표시한다.
     utterances_out = []
     for row in utterances:
         verdict = classify(row["text"], row.get("ministry_id"))
-        if not verdict.is_relevant:
-            continue
         utterances_out.append(
             {
                 "speaker": row["speaker_raw"],
@@ -153,7 +153,7 @@ def main() -> None:
                 "text": row["text"],
                 "meetingKey": row["meeting_key"],
                 "date": row["held_on"],
-                "attribution": row["attribution"],
+                "stc": verdict.is_relevant,
                 "tags": verdict.tags,
             }
         )
