@@ -5,7 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>과학기술정책 국무회의 아카이브</title>
 <meta name="description" content="2018-09~2026-07 국무회의 안건 16,742건을 공식 의사일정 원문에서 추출해 과학기술정책 축으로 분류한 아카이브">
-<link rel="stylesheet" href="style.css">
+<!-- ?v= 는 배포 때마다 올린다. _headers가 js/css에 max-age=86400을 걸어 두어,
+     파일명이 그대로면 기존 방문자는 하루 동안 옛 스크립트를 계속 쓴다. -->
+<link rel="stylesheet" href="style.css?v=2">
 </head>
 <body>
 <a class="skip" href="#main">본문 바로가기</a>
@@ -28,7 +30,9 @@
     <div class="row">
       <label class="field grow">
         <span class="label">검색 <em class="lbl-note">안건명·부처명 + 대통령·국무위원 발언 전문</em></span>
-        <input type="search" id="q" placeholder="예: 소버린, GPU, 반도체 특별법, 원전" autocomplete="off">
+        <!-- 예시어는 안건·발언 양쪽에서 실제로 걸리는 것만 둔다. 첫 시도가 0건이면
+             검색이 고장난 것으로 읽힌다(직전 '소버린'·'GPU'가 그랬다). -->
+        <input type="search" id="q" placeholder="예: 인공지능, 반도체 특별법, 원자력, 탄소중립" autocomplete="off">
       </label>
       <label class="field">
         <span class="label">기간</span>
@@ -177,6 +181,6 @@
   </div>
 </footer>
 
-<script src="app.js"></script>
+<script src="app.js?v=2"></script>
 </body>
 </html>

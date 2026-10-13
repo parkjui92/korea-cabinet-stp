@@ -51,6 +51,12 @@ function renderMeta() {
 
 const stat = (n, k) => `<div class="stat"><div class="n">${n}</div><div class="k">${k}</div></div>`;
 
+// 검색어는 띄어쓰기로 끊어 "낱말을 모두 포함하는가"로 본다. 통째 부분문자열로
+// 보면 「반도체 특별법」이 '반도체산업 … 지원 특별법 일부개정법률안'을 못 잡는다.
+// 안건명은 공식 법령명이라 사용자가 기억하는 순서·간격과 늘 어긋나기 때문이다.
+const terms = (q) => q.split(/\s+/).filter(Boolean);
+const hitsAll = (hay, ts) => ts.every((t) => hay.includes(t));
+
 function tally(rows, keyFn) {
   const m = new Map();
   for (const r of rows) {
@@ -86,6 +92,7 @@ function fillSelects() {
 // ── 필터 ────────────────────────────────────────────────────────────
 function apply() {
   const q = el("q").value.trim().toLowerCase();
+  const qs = terms(q);
   const [from, to] = (el("era").value || "|").split("|");
   const ministry = el("ministry").value;
   const tag = el("tag").value;
@@ -102,23 +109,23 @@ function apply() {
     if (tag && !a.tags.includes(tag)) return false;
     if (from && a.date < from) return false;
     if (to && a.date > to) return false;
-    if (q) {
+    if (qs.length) {
       const hay = `${a.title} ${a.ministry} ${a.category}`.toLowerCase();
-      if (!hay.includes(q)) return false;
+      if (!hitsAll(hay, qs)) return false;
     }
     return true;
   });
 
   state.shown = 0;
   el("rows").innerHTML = "";
-  renderUtterances(q);
+  renderUtterances(q, qs);
   renderMeetingBar();
   renderHint();
   more();
 }
 
 // ── 발언 교차 검색 ──────────────────────────────────────────────────
-function renderUtterances(q) {
+function renderUtterances(q, qs) {
   const box = el("utterances");
   // 드릴다운 중이거나 검색어가 2글자 미만이면 발언 패널을 숨긴다.
   if (state.meetingFilter || q.length < 2) {
@@ -127,7 +134,7 @@ function renderUtterances(q) {
     return;
   }
 
-  const hits = state.data.utterances.filter((u) => u.text.toLowerCase().includes(q));
+  const hits = state.data.utterances.filter((u) => hitsAll(u.text.toLowerCase(), qs));
   if (!hits.length) {
     box.hidden = true;
     box.innerHTML = "";
@@ -138,7 +145,7 @@ function renderUtterances(q) {
   const rows = shown
     .map((u) => {
       const m = state.meetingsByKey.get(u.meetingKey);
-      const snippet = snippetAround(u.text, q);
+      const snippet = snippetAround(u.text, qs);
       return `<li>
         <div class="u-head">
           <span class="u-date">${u.date}</span>
@@ -159,20 +166,38 @@ function renderUtterances(q) {
     <ul class="u-list">${rows}</ul>`;
 }
 
-function snippetAround(text, q) {
-  const i = text.toLowerCase().indexOf(q);
-  if (i < 0) return esc(text.slice(0, 160));
-  const start = Math.max(0, i - 60);
-  const end = Math.min(text.length, i + q.length + 100);
+function snippetAround(text, qs) {
+  const low = text.toLowerCase();
+  // 가장 먼저 나오는 낱말에 창을 맞춘다 — 검색어가 여럿이면 그게 문맥의 시작이다.
+  const first = qs.map((t) => low.indexOf(t)).filter((i) => i >= 0).sort((a, b) => a - b)[0];
+  if (first == null) return esc(text.slice(0, 160));
+
+  const start = Math.max(0, first - 60);
+  const end = Math.min(text.length, first + 160);
   const pre = start > 0 ? "…" : "";
   const post = end < text.length ? "…" : "";
-  return (
-    pre +
-    esc(text.slice(start, i)) +
-    `<mark>${esc(text.slice(i, i + q.length))}</mark>` +
-    esc(text.slice(i + q.length, end)) +
-    post
-  );
+  return pre + markTerms(text.slice(start, end), qs) + post;
+}
+
+// 창 안의 검색 낱말을 전부 <mark>로 감싼다. 이스케이프는 조각마다 따로 한다 —
+// 통째로 먼저 이스케이프하면 &amp; 같은 실체참조 속이 검색어와 잘못 맞는다.
+function markTerms(seg, qs) {
+  const low = seg.toLowerCase();
+  const spans = [];
+  for (const t of qs) {
+    for (let i = low.indexOf(t); i >= 0; i = low.indexOf(t, i + t.length)) spans.push([i, i + t.length]);
+  }
+  if (!spans.length) return esc(seg);
+  spans.sort((a, b) => a[0] - b[0]);
+
+  let out = "";
+  let at = 0;
+  for (const [s, e] of spans) {
+    if (s < at) continue; // 낱말끼리 겹치면 앞선 것만 표시
+    out += esc(seg.slice(at, s)) + `<mark>${esc(seg.slice(s, e))}</mark>`;
+    at = e;
+  }
+  return out + esc(seg.slice(at));
 }
 
 // ── 회의 드릴다운 표시줄 ────────────────────────────────────────────
@@ -324,7 +349,10 @@ function bindEvents() {
   let timer;
   el("q").addEventListener("input", () => {
     clearTimeout(timer);
-    timer = setTimeout(apply, 180);
+    timer = setTimeout(() => {
+      state.meetingFilter = null; // 검색창도 필터다 — 만지면 드릴다운을 푼다
+      apply();
+    }, 180);
   });
   for (const id of ["era", "ministry", "tag", "stcOnly", "policyOnly"]) {
     el(id).addEventListener("change", () => {
